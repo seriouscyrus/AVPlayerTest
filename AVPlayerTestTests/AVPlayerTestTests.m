@@ -42,11 +42,8 @@
                                                 case AVPlayerItemStatusUnknown:
                                                     return NO;
                                                     break;
-                                                    case AVPlayerItemStatusReadyToPlay:
-                                                {
+                                                case AVPlayerItemStatusReadyToPlay:
                                                     return YES;
-                                                }
-                                                default:
                                                     break;
                                             }
                                         }];
