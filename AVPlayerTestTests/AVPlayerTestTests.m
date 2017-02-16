@@ -65,19 +65,21 @@
         player.muted = YES;
         [player play];
         CMTime vTime = [output itemTimeForHostTime:CACurrentMediaTime()];
+        // This is what we're testing
         BOOL foundFrame = [output hasNewPixelBufferForItemTime:vTime];
         XCTAssertTrue(foundFrame);
         if (!foundFrame) {
-            sleep(1);
             // Cycle over for ten seconds
             for (int i = 0; i < 10; i++) {
+                sleep(1);
                 vTime = [output itemTimeForHostTime:CACurrentMediaTime()];
                 foundFrame = [output hasNewPixelBufferForItemTime:vTime];
                 if (foundFrame) {
                     NSLog(@"Got frame at %i", i);
                     break;
-                } else {
-                    sleep(1);
+                }
+                if (i == 9) {
+                    XCTFail(@"Failed to acquire");
                 }
             }
         }
