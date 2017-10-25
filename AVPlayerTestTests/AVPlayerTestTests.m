@@ -8,8 +8,12 @@
 
 #import <XCTest/XCTest.h>
 #import <AVFoundation/AVFoundation.h>
+#import <GLKit/GLKit.h>
 
 @interface AVPlayerTestTests : XCTestCase
+
+// Do we need a context?  Let's have one anyway.
+@property (nonatomic)   EAGLContext *context;
 
 @end
 
@@ -17,6 +21,8 @@
 
 - (void)setUp {
     [super setUp];
+    self.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    [EAGLContext setCurrentContext:self.context];
     // Put setup code here. This method is called before the invocation of each test method in the class.
 }
 
@@ -27,27 +33,6 @@
 
 - (void) testAVPlayer
 {
-    NSURL *fileURL = [[NSBundle bundleForClass:self.class] URLForResource:@"SampleVideo_1280x720_10mb" withExtension:@"mp4"];
-    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:fileURL];
-    [self keyValueObservingExpectationForObject:playerItem
-                                        keyPath:@"status" handler:^BOOL(id  _Nonnull observedObject, NSDictionary * _Nonnull change) {
-                                            AVPlayerItem *oPlayerItem = (AVPlayerItem *)observedObject;
-                                            switch (oPlayerItem.status) {
-                                                case AVPlayerItemStatusFailed:
-                                                {
-                                                    XCTFail(@"Video failed");
-                                                    return YES;
-                                                }
-                                                    break;
-                                                case AVPlayerItemStatusUnknown:
-                                                    return NO;
-                                                    break;
-                                                case AVPlayerItemStatusReadyToPlay:
-                                                    return YES;
-                                                    break;
-                                            }
-                                        }];
-    AVPlayer *player = [AVPlayer playerWithPlayerItem:playerItem];
     NSDictionary *pbOptions = @{
                                 (NSString *)kCVPixelBufferPixelFormatTypeKey        : [NSNumber numberWithInt:kCVPixelFormatType_32BGRA],
                                 (NSString *)kCVPixelBufferIOSurfacePropertiesKey    : [NSDictionary dictionary],
@@ -55,8 +40,38 @@
                                 };
     AVPlayerItemVideoOutput *output = [[AVPlayerItemVideoOutput alloc] initWithPixelBufferAttributes:pbOptions];
     XCTAssertNotNil(output);
-    [self waitForExpectationsWithTimeout:100 handler:nil];
+
+    NSURL *fileURL = [[NSBundle bundleForClass:self.class] URLForResource:@"SampleVideo_1280x720_10mb" withExtension:@"mp4"];
+    AVPlayerItem *playerItem = [AVPlayerItem playerItemWithURL:fileURL];
+    AVPlayer *player = [AVPlayer playerWithPlayerItem:playerItem];
+
+    if (playerItem.status != AVPlayerItemStatusReadyToPlay) {
+        [self keyValueObservingExpectationForObject:playerItem
+                                            keyPath:@"status"
+                                            handler:
+         ^BOOL(id  _Nonnull observedObject, NSDictionary * _Nonnull change) {
+             AVPlayerItem *oPlayerItem = (AVPlayerItem *)observedObject;
+             switch (oPlayerItem.status) {
+                 case AVPlayerItemStatusFailed:
+                 {
+                     XCTFail(@"Video failed");
+                     return YES;
+                 }
+                     break;
+                 case AVPlayerItemStatusUnknown:
+                     return NO;
+                     break;
+                 case AVPlayerItemStatusReadyToPlay:
+                     return YES;
+                     break;
+             }
+         }];
+
+        [self waitForExpectationsWithTimeout:100 handler:nil];
+    }
+
     if (playerItem.status == AVPlayerItemStatusReadyToPlay) {
+
         [playerItem addOutput:output];
         player.rate = 1.0;
         player.muted = YES;
@@ -74,6 +89,9 @@
                 if (foundFrame) {
                     NSLog(@"Got frame at %i", i);
                     break;
+                } else {
+                    NSLog(@"Current time = %f", CACurrentMediaTime());
+                    NSLog(@"Calculate time = %lld", vTime.value);
                 }
                 if (i == 9) {
                     XCTFail(@"Failed to acquire");
