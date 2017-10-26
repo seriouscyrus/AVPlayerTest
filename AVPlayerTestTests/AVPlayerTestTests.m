@@ -35,10 +35,11 @@
 {
     NSDictionary *pbOptions = @{
                                 (NSString *)kCVPixelBufferPixelFormatTypeKey        : [NSNumber numberWithInt:kCVPixelFormatType_32BGRA],
-                                (NSString *)kCVPixelBufferIOSurfacePropertiesKey    : [NSDictionary dictionary],
+                                //(NSString *)kCVPixelBufferIOSurfacePropertiesKey    : @{},
                                 (NSString *)kCVPixelBufferOpenGLESCompatibilityKey  : @YES
                                 };
     AVPlayerItemVideoOutput *output = [[AVPlayerItemVideoOutput alloc] initWithPixelBufferAttributes:pbOptions];
+    output.suppressesPlayerRendering = YES;
     XCTAssertNotNil(output);
 
     NSURL *fileURL = [[NSBundle bundleForClass:self.class] URLForResource:@"SampleVideo_1280x720_10mb" withExtension:@"mp4"];
@@ -69,17 +70,21 @@
 
         [self waitForExpectationsWithTimeout:100 handler:nil];
     }
-
-    if (playerItem.status == AVPlayerItemStatusReadyToPlay) {
+    //CFTimeInterval basetime = CACurrentMediaTime();
+    if (playerItem.status == AVPlayerItemStatusReadyToPlay && player.status == AVPlayerStatusReadyToPlay) {
 
         [playerItem addOutput:output];
         player.rate = 1.0;
         player.muted = YES;
-        [player play];
-        CMTime vTime = [output itemTimeForHostTime:CACurrentMediaTime()];
+        //[player play];
+        //CMTime vTime = [output itemTimeForHostTime:CACurrentMediaTime() - basetime];
+        //CMTime vTime = [output itemTimeForHostTime:0];
+        CMTime vTime = [output itemTimeForHostTime:CFAbsoluteTimeGetCurrent()];
+
         // This is what we're testing
         BOOL foundFrame = [output hasNewPixelBufferForItemTime:vTime];
         XCTAssertTrue(foundFrame);
+        XCTAssertEqual(player.rate, 1.0);
         if (!foundFrame) {
             // Cycle over for ten seconds
             for (int i = 0; i < 10; i++) {
